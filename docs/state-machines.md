@@ -2,6 +2,11 @@
 
 State machine diagrams for every major flow in the NexGo app.
 
+> These describe the current UI flows, not verified payment atomicity. The
+> [architecture](ARCHITECTURE.md), [development plan](DEVELOPMENT_PLAN.md) and
+> [2026-09-08 review](DEVELOPMENT_REVIEW_2026-09-08.md) define the missing
+> invoice evidence, reconciliation and packaging acceptance gates.
+
 ---
 
 ## 1. App Initialization

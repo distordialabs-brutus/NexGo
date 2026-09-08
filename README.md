@@ -2,6 +2,8 @@
 
 **Decentralized taxi hiring service built on the Nexus blockchain.**
 
+**Engineering status:** prototype, not payment-release-ready. See the [architecture](docs/ARCHITECTURE.md), [development plan](docs/DEVELOPMENT_PLAN.md), and [2026-09-08 review](docs/DEVELOPMENT_REVIEW_2026-09-08.md) for core invoice compatibility, settlement evidence and production packaging gates.
+
 NexGo is a Nexus Wallet module that lets drivers register their vehicles on-chain and broadcast their GPS positions in real-time. Passengers can discover nearby available taxis, see them on a live map, and search for destinations — all without a centralized server.
 
 The same on-chain taxi standard can also be published directly by external providers using the Nexus API, which allows autonomous / self-driving taxi fleets to appear in the passenger module alongside human drivers.
