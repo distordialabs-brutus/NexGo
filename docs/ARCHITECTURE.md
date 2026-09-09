@@ -1,7 +1,7 @@
 # NexGo architecture and acceptance boundaries
 
-Reviewed 2026-09-08 against `7a9c4816852d3e0a7b500f64bfac035715502f86`.
-This is a NexusInterface wallet module, not a public-browser backend or an implemented escrow service. See [review evidence](DEVELOPMENT_REVIEW_2026-09-08.md) and [development plan](DEVELOPMENT_PLAN.md).
+Reviewed 2026-09-09 against `master` at `d2f9ac053eba610e15c113db1584896c9701cf76`. The only commit after runtime baseline `7a9c4816852d3e0a7b500f64bfac035715502f86` is the 2026-09-08 documentation baseline; `git diff --name-status 7a9c481..d2f9ac0` contains only README and documentation paths. Runtime behavior and release status are unchanged.
+This is a NexusInterface wallet module, not a public-browser backend or an implemented escrow service. See [review evidence](DEVELOPMENT_REVIEW_2026-09-09.md) and [development plan](DEVELOPMENT_PLAN.md).
 
 ## Current implementation
 
@@ -26,4 +26,4 @@ Taxi registers are typed JSON; passenger-owned rides and rating maps are raw JSO
 
 ## Acceptance status
 
-**Prototype; not payment-release-ready.** Production Webpack compilation passes, but the current core invoice response shape is not decoded, payment read-back is absent, and emitted runtime images are missing from the package allowlist. No test/lint command or checked-in CI workflow establishes the required transitions. The [historical/current-flow diagrams](state-machines.md) remain useful UI descriptions, not the target settlement protocol.
+**Prototype; not payment-release-ready.** The last executed production Webpack build passed on 2026-09-08, but the current core invoice response shape is not decoded, payment read-back is absent, and emitted runtime images are missing from the package allowlist. The 2026-09-09 gate attempt was approval-denied before execution and does not replace that evidence. No test/lint command or checked-in CI workflow establishes the required transitions. The [historical/current-flow diagrams](state-machines.md) remain useful UI descriptions, not the target settlement protocol.
