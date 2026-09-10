@@ -1,6 +1,6 @@
 # NexGo development plan
 
-Status re-reviewed 2026-09-09 at `d2f9ac053eba610e15c113db1584896c9701cf76`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-09.md). This plan is work to implement, not completed functionality.
+Status re-reviewed 2026-09-10 at pre-publication HEAD `0109a57dec8a2f69e6f179f9c0d20084910bee67`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-10.md). This plan is work to implement, not completed functionality.
 
 ## Batch 1 — Invoice adapter and reproducible gate (P1, release blocker)
 
