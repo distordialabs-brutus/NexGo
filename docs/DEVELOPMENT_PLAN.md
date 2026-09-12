@@ -1,6 +1,6 @@
 # NexGo development plan
 
-Status re-reviewed 2026-09-10 at pre-publication HEAD `0109a57dec8a2f69e6f179f9c0d20084910bee67`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-10.md). This plan is work to implement, not completed functionality.
+Status re-reviewed 2026-09-12 at pre-publication HEAD `2effd33df1a11dceb9831774a694c95cbce0cb89`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-12.md). This plan is work to implement, not completed functionality.
 
 ## Batch 1 — Invoice adapter and reproducible gate (P1, release blocker)
 
@@ -9,12 +9,14 @@ Status re-reviewed 2026-09-10 at pre-publication HEAD `0109a57dec8a2f69e6f179f9c
 - Regress the current failure: an invoice `{address, json: {account, recipient, amount: 10, items: [{description: 'NexGo ride ride=abc123'}], status}}` must retain the amount, identity and ride reference. Reject missing/malformed fields; test real supported core fixtures and wallet return envelopes.
 - Exit: full gate passes and an isolated supported-core invoice read traverses the production adapter without synthetic fallback fields.
 
-## Batch 2 — Verified invoice-to-ride settlement (P1, release blocker)
+## Batch 2 — Verified invoice issuance and settlement (P1, release blocker)
 
+- Move `Driver.handleCreateInvoice` orchestration out of the view. Persist a ride-scoped issuance intent, reject ineligible/cancelled/paid requests after an authoritative reread, and retain the returned invoice address/txid before any taxi-state projection.
+- Read back and validate the exact new invoice. A failed taxi `occupied` projection must be recoverable without recreating the invoice, and the UI must report “invoice created; taxi status requires reconciliation” rather than “failed to create invoice.” Deduplicate by durable ride/invoice identity rather than description order.
 - Move `Passenger.handlePayInvoice` orchestration out of the view. Persist public intent scoped to profile/network/ride/invoice, freeze accepted terms, validate issuer/account/token/recipient/amount and reread authoritative state immediately before payment.
 - Store returned txid, then verify exact invoice state and transaction evidence. Unknown submission remains held across restart. Mark ride projection complete only after its own read-back. A projection failure must say “payment requires reconciliation,” not imply payment failed and invite repayment.
-- Test accepted-but-timeout, empty response, wrong issuer, copied description, duplicate invoices, changed fare, repeated click, profile/network switch, crash after payment and before ride update, and restart. Assert mutation counts: one pay maximum and no pay while evidence is unknown.
-- Exit: two isolated test profiles complete create/read/pay/read/project/read through the supported wallet boundary; no production credentials or funds.
+- Test issue-accepted/taxi-update-failed, issue timeout, accepted-but-timeout payment, empty response, wrong issuer, copied description, duplicate invoices, changed fare, repeated click, profile/network switch, crash after either mutation and before projection, and restart. Assert mutation counts: one issue and one pay maximum, with no mutation while evidence is unknown.
+- Exit: two isolated test profiles complete request/read/issue/read/pay/read/project/read through the supported wallet boundary; no production credentials or funds.
 
 ## Batch 3 — Packaging (P1)
 
