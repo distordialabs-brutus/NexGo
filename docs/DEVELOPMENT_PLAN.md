@@ -1,6 +1,6 @@
 # NexGo development plan
 
-Status re-reviewed 2026-09-12 at pre-publication HEAD `2effd33df1a11dceb9831774a694c95cbce0cb89`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-12.md). This plan is work to implement, not completed functionality.
+Status re-reviewed 2026-09-15 at freshly fetched local/remote HEAD `9c5369ff1ed4102b5b3cf94f75786ca6eb58d676`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. A fresh production build passes, while the runtime package check still finds seven referenced emitted PNGs absent from the manifest. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-15.md). This plan is work to implement, not completed functionality. **Next repair:** Batch 1 before any real invoice or payment testing.
 
 ## Batch 1 — Invoice adapter and reproducible gate (P1, release blocker)
 

@@ -1,7 +1,7 @@
 # NexGo architecture and acceptance boundaries
 
-Reviewed 2026-09-12 against pre-publication `master` at `2effd33df1a11dceb9831774a694c95cbce0cb89`. No commit follows the 2026-09-10 review publication, and the runtime baseline remains `7a9c4816852d3e0a7b500f64bfac035715502f86`. Runtime behavior and release status are unchanged.
-This is a NexusInterface wallet module, not a public-browser backend or an implemented escrow service. See [review evidence](DEVELOPMENT_REVIEW_2026-09-12.md) and [development plan](DEVELOPMENT_PLAN.md).
+Reviewed 2026-09-15 against freshly fetched local/remote `master` at `9c5369ff1ed4102b5b3cf94f75786ca6eb58d676`. The only commit after the prior review baseline is its 2026-09-12 documentation publication; runtime remains byte-identical to `7a9c4816852d3e0a7b500f64bfac035715502f86`.
+This is a NexusInterface wallet module, not a public-browser backend or an implemented escrow service. See [review evidence](DEVELOPMENT_REVIEW_2026-09-15.md) and [development plan](DEVELOPMENT_PLAN.md).
 
 ## Current implementation
 
@@ -26,4 +26,4 @@ Taxi registers are typed JSON; passenger-owned rides and rating maps are raw JSO
 
 ## Acceptance status
 
-**Prototype; not payment-release-ready.** The last executed production Webpack build passed on 2026-09-08, but the current core invoice response shape is not decoded, issuance and payment read-back are absent, and emitted runtime images are missing from the package allowlist. The 2026-09-10 compound gate was approval-denied before execution and does not replace that evidence; it was not rerouted during the 2026-09-12 review. No test/lint command or checked-in CI workflow establishes the required transitions. The [historical/current-flow diagrams](state-machines.md) remain useful UI descriptions, not the target settlement protocol.
+**Prototype; not payment-release-ready.** A fresh 2026-09-15 production Webpack build passes with three performance warnings, but all seven referenced emitted PNGs remain outside the package allowlist. The current core invoice response shape is still not decoded, issuance/payment read-back and reconciliation are absent, and no test/lint command or checked-in CI workflow establishes the required transitions. The exact next repair is the versioned invoice adapter plus deterministic fixture tests: exit only when nested payloads preserve canonical metadata and exact terms, malformed/error/precision cases fail closed, and an isolated supported-core read traverses that adapter. The [historical/current-flow diagrams](state-machines.md) remain useful UI descriptions, not the target settlement protocol.
