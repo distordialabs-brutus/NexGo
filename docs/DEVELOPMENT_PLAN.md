@@ -1,13 +1,13 @@
 # NexGo development plan
 
-Status re-reviewed 2026-09-15 at freshly fetched local/remote HEAD `9c5369ff1ed4102b5b3cf94f75786ca6eb58d676`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. A fresh production build passes, while the runtime package check still finds seven referenced emitted PNGs absent from the manifest. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-15.md). This plan is work to implement, not completed functionality. **Next repair:** Batch 1 before any real invoice or payment testing.
+Status re-reviewed 2026-09-16 at freshly fetched local/remote HEAD `0009d6dc76e086fdbb2893eccaf6406d6c090527`; runtime is unchanged from `7a9c4816852d3e0a7b500f64bfac035715502f86`. A fresh production build passes, while the runtime package check still finds seven referenced emitted PNGs absent from the manifest. Authority: [architecture](ARCHITECTURE.md), [executed review](DEVELOPMENT_REVIEW_2026-09-16.md). This plan is work to implement, not completed functionality. **Next repair:** Batch 1 before any real invoice or payment testing.
 
 ## Batch 1 — Invoice adapter and reproducible gate (P1, release blocker)
 
-- Add a single normalized invoice contract in `src/api/nexusAPI.js`: decode current core `json` payload, preserve canonical register metadata and token identity, require valid amount/items/recipient/account/status. Support another shape only through an explicit tested compatibility branch, never zero/empty success defaults.
+- Add versioned normalized contracts in `src/api/nexusAPI.js`: decode the current invoice `json` payload, preserve canonical register metadata and token identity, and require valid amount/items/recipient/account/status. For rides, require canonical `address` and `owner`; reject instead of falling back from a missing `owner` to passenger-controlled `passenger-genesis`, and reject a redundant claim that differs from canonical ownership. Support another shape only through an explicit tested compatibility branch, never zero/empty success defaults.
 - Add `test`, `lint` and a clean-lockfile CI command covering API payloads, data errors, amount precision, package inventory and build. Keep NexusInterface-compatible versions; do not blindly upgrade the dependency tree.
-- Regress the current failure: an invoice `{address, json: {account, recipient, amount: 10, items: [{description: 'NexGo ride ride=abc123'}], status}}` must retain the amount, identity and ride reference. Reject missing/malformed fields; test real supported core fixtures and wallet return envelopes.
-- Exit: full gate passes and an isolated supported-core invoice read traverses the production adapter without synthetic fallback fields.
+- Regress the current failures: an invoice `{address, json: {account, recipient, amount: 10, items: [{description: 'NexGo ride ride=abc123'}], status}}` must retain the amount, identity and ride reference; a ride with no canonical owner must reject even when its raw payload claims `passenger-genesis`. Reject missing/malformed/conflicting fields; test real supported core fixtures and wallet return envelopes.
+- Exit: full gate passes and isolated supported-core invoice/ride reads traverse the production adapters without synthetic fallback identity or terms.
 
 ## Batch 2 — Verified invoice issuance and settlement (P1, release blocker)
 
