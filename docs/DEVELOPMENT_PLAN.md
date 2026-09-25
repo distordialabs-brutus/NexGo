@@ -1,74 +1,91 @@
 # NexGo development plan
 
-Status re-reviewed 2026-09-23 at `master` HEAD `78435a5d4f97deb27770051a8aacbbc3360b9355`; runtime remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. A clean offline install/build passes, but current Nexus invoice creation is called with the wrong destination parameter, current invoice envelopes normalize to empty terms, canonical ride ownership/revision checks fail open, settlement has no durable reconciliation, and seven referenced PNGs remain outside the serving manifest. Authority: [architecture](ARCHITECTURE.md) and [executed review](DEVELOPMENT_REVIEW_2026-09-23.md).
+Status re-reviewed 2026-09-25 against commit `7da750f1f674b9af839c650f6a47bc4a2af15729`; runtime remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. A clean offline install/build passes, but all release blockers in the [current evaluation](EVALUATION.md) remain. Architecture authority: [ARCHITECTURE.md](ARCHITECTURE.md). Executed evidence: [DEVELOPMENT_REVIEW_2026-09-25.md](DEVELOPMENT_REVIEW_2026-09-25.md).
 
-**No real invoice, payment, profile write or production release until Batches 1A–1D exit. Next repair: Batch 1A.**
+**No real invoice, payment, profile write, production installation, or release until Batch 0 and Batches 1A–1D exit. Next implementation slice: Batch 0 followed by Batch 1A.**
 
-## Batch 1A — Pinned current-core API adapter (P0)
+## Batch 0 — Containment and reproducible offline gate (P0)
 
-**Targets:** `src/api/contracts.js`, `src/api/nexusAPI.js`, `test/contracts.test.js`, `test/api-envelopes.test.js`, pinned current-core fixtures.
+**Targets:** `package.json`, `test/`, `scripts/`, `.github/workflows/ci.yml`; no application mutation behavior yet.
 
-- Pin and document supported Nexus core and NexusInterface versions. Treat the reviewed LLL-TAO stable `11851455…` and wallet `1e923d46…` semantics as the initial contract unless maintainers choose a different release explicitly.
-- Send invoice destination as `to` (or an explicitly tested `address_to`/`name_to`), never the stale vendored-doc `account` input. Continue reading the canonical resulting destination as `json.account`.
-- Decode invoice terms from `invoice.json` while preserving top-level `address`, `owner`, created/modified metadata. Require address, canonical owner/issuer, account, recipient, token, status, non-empty items and exact amount. Convert decimal strings to integer base units using the token's decimals; do not pass a parsed JavaScript float through business state.
-- Require ride `address` and `owner`; require payload `passenger-genesis` to match canonical owner if present. Preserve schema version and register metadata. Reject unknown/missing/conflicting/malformed values rather than defaulting to zero, blank, `requesting` or `(0,0)`.
-- Add explicit API-envelope error handling and prove supported wallet return values. No current/legacy shape guessing.
+- Keep payment/issue actions visibly disabled behind one release-safety gate until the durable protocol exits. Do not rely on documentation warnings alone.
+- Add deterministic `test`, `lint`, `test:package`, and aggregate `verify` scripts. Prefer the existing toolchain or Node's built-in test runner; dependency changes require separate approval.
+- Make tests deny all unmocked network and wallet access. Put pinned LLL-TAO/NexusInterface fixture provenance and source blob IDs next to fixtures.
+- Add the currently executed contract-defect and package-inventory probes as collected regressions. A test that merely reproduces a defect must fail until the repair lands.
+- Run build, tests, static/lint checks, manifest inventory, Markdown links, and Git whitespace/conflict checks in CI.
 
-**Executable exit:** one offline command runs fixtures copied from the pinned source contract with all wallet/network functions set to throw. It must prove: current nested invoice terms round-trip exactly; writer emits `to` and never `account`; missing canonical ride owner rejects; mismatched owner claim rejects; unknown version/status/token and unsafe precision reject; an API error/undefined result never becomes success.
+**Executable exit:** from a clean clone, one offline command installs from the unchanged lockfile and runs every gate. The initial gate is allowed to be red only on explicitly enumerated Batch 1 defects; no test is hidden outside default collection. Exact-head CI uses the same command.
 
-## Batch 1B — Canonical ownership and revision-safe transitions (P0)
+## Batch 1A — Pinned current-core adapter and exact money contract (P0)
 
-**Targets:** `src/api/contracts.js`, `src/services/rideTransitions.js`, `src/store/rideIntents.js`, `test/ride-transitions.test.js`.
+**Targets:** `src/api/contracts.js`, `src/api/nexusAPI.js`, `test/contracts.test.js`, `test/api-envelopes.test.js`, pinned source fixtures.
 
-- Replace every stale `currentData` merge with exact-address reread → validation → transition construction → submission → readback. Keep canonical payload digests and modified metadata in intent records.
-- Scope intent and one-pending-write locks to wallet/profile, network, register address and operation. Persist only public identities/state; never PIN, password, Basic auth or session ID.
-- Mutate taxis by canonical address and verify the active profile owns the address. Reject mutable `driver` mismatch; do not select `assets[0]` or rebuild mutation targets from mutable vehicle settings.
-- Encode an allowed legacy state transition table. A changed prestate is a conflict, not an automatic merge. Document that current public asset updates expose no CAS; do not claim cross-client serializability for legacy whole-blob writes.
-- Validate UTF-8 bytes, bounded labels, finite/ranged coordinates, identifiers and schema before opening the PIN dialog.
+- Pin LLL-TAO stable `1185145534a20ed4d2288e4513c505f271be536d` and NexusInterface `1e923d46a9cde1cf22b8608257c92da184aece16` as the initial supported contract unless maintainers explicitly select another version.
+- Emit invoice destination as `to`. If aliases are supported, test `name_to` and `address_to` independently; never send the stale vendored-doc `account` input. Read the resulting destination from `json.account`.
+- Split canonical envelope from typed payload. Require invoice address, lifecycle owner, created/modified metadata, nested account/recipient/token/status, non-empty items, and supported schema. No blank/zero/default success values.
+- Model invoice current owner as lifecycle evidence, not issuer. Bind issuer to retained creation tx/genesis evidence. Verify expected system-owned outstanding and recipient-owned paid states from the pinned core source.
+- Accept decimal strings at the UI/adapter boundary and convert with a strict decimal-to-integer function parameterized by token decimals. Reject exponent notation, negatives, excess scale, overflow, unsafe integer conversion, non-finite values, and item/total disagreement.
+- Because reviewed core invoice JSON and pay code use doubles, define a conservative supported amount range and require isolated target-core tests that compare requested base units with the actual DEBIT contract. Do not claim arbitrary-token exactness from offline JavaScript fixtures.
+- Require ride canonical `address` and `owner`, explicit legacy version/state, finite/ranged coordinates, and matching `passenger-genesis` if present. Preserve register metadata; reject unknown shapes.
+- Handle wallet/API response envelopes explicitly. An error member, undefined return, malformed success, or absent address/txid is not success.
 
-**Executable exit:** collected tests cover missing/conflicting owners, stale digest/modified state, duplicate click, profile/network switch, concurrent changed prestate, invalid transition, oversize/multibyte payload, ambiguous return and exact readback. Assert zero secure calls on every rejection and at most one secure call per durable intent.
+**Executable exit:** default offline tests prove writer uses `to` and never `account`; current nested invoice terms round-trip; current owner is not accepted as immutable issuer; missing/conflicting ride ownership rejects; malformed precision/status/token/version rejects; and no rejected request reaches `secureApiCall`. Target-core acceptance proves exact supported base units.
 
-## Batch 1C — Durable invoice issuance and payment reconciliation (P0)
+## Batch 1B — Canonical authority and revision-safe transitions (P0)
 
-**Targets:** `src/services/rideSettlement.js`, `src/store/rideIntents.js`, `src/App/Driver.js`, `src/App/Passenger.js`, `test/ride-settlement.test.js`.
+**Targets:** `src/services/rideTransitions.js`, `src/store/rideIntents.js`, taxi/ride adapters, collected transition tests.
 
-- Persist issue intent before PIN; reread ride/taxi and freeze passenger, provider, account, token and base-unit terms. Persist returned invoice address/txid before the independent taxi projection.
-- Reread the exact created invoice and verify nested canonical terms. A taxi projection failure reports `invoice created; taxi status reconciliation required` and cannot recreate the invoice.
-- Persist payment intent before PIN; reread the exact invoice immediately before payment and bind canonical issuer, account, recipient, token, amount/items/status to the accepted agreement. Description matching is discovery only.
-- Persist payment txid/unknown state; verify exact invoice plus transaction/history evidence. Perform the passenger-owned ride projection separately and recover it by exact invoice address after paid invoices leave `list/outstanding`.
-- Never retry issue/pay after timeout, undefined/empty response or restart until exact readback proves no effect. Never imply a projection failure means the payment failed.
+- Replace all stale `currentData` merges with exact-address reread → strict decode → authority/state/digest comparison → transition construction → submission → readback.
+- Mutate taxis by canonical address. Require active-profile ownership and matching network; reject mutable `driver` conflicts. Never choose `assets[0]`, rebuild a target from current settings, or collapse a read error into “no asset.”
+- Encode allowed legacy transitions separately for passenger-owned ride, driver-owned taxi, and invoice lifecycle. One role cannot rewrite another role's intent.
+- Scope one-pending-operation locks and intents to wallet instance, profile genesis, network, register address, and operation. Storage contains public identities/digests/state only—never PIN, password, Basic auth, or session ID.
+- Validate UTF-8 bytes, identifier/label bounds, coordinate ranges, and complete canonical schema before opening the wallet PIN dialog.
+- State the concurrency limit honestly: pre-read plus local serialization detects many stale writes but is not cross-client CAS. Do not let legacy whole-blob writes authorize settlement.
 
-**Executable exit:** tests cover wrong destination parameter, wrong issuer/account/token/recipient, copied ride description, duplicate invoices, fare change, paid/cancelled status, timeout before/after acceptance, empty response, restart at every state, projection failure and repeated click. Mutation counters remain `issue <= 1`, `pay <= 1`; no mutation occurs while outcome is unknown. Then two isolated non-production profiles execute request/read/issue/read/pay/read/project/read through the pinned wallet/core boundary with synthetic funds only.
+**Executable exit:** tests cover missing/conflicting owner, wrong active profile/network, stale modified/digest, concurrent changed prestate, duplicate click, invalid transition, oversized/multibyte payload, API ambiguity, restart, and exact readback. Every rejection has zero secure calls; each committed intent has at most one consequential call.
 
-## Batch 1D — Reproducible quality and package gate (P0)
+## Batch 1C — Durable invoice issue/payment and projection recovery (P0)
 
-**Targets:** `package.json`, `test/`, `.github/workflows/ci.yml`, `webpack.config.babel.js`, `nxs_package.json`.
+**Targets:** `src/services/rideSettlement.js`, durable wallet-owned intent storage, `Driver.js`, `Passenger.js`, `test/ride-settlement.test.js`.
 
-- Add deterministic `test`, `lint` and `test:package` scripts; collect all contract/state tests by default. Add a network-denial test that fails on any unstubbed external access.
-- Keep current compatible dependency versions unless a separately approved dependency change is required. A clean `npm ci` must reproduce the lockfile.
-- Inline emitted map images or list every hashed runtime asset explicitly. Do not use unsupported wildcards. Assert every JS/CSS-referenced emitted file is served by the manifest.
-- Run build, test, lint, package inventory, Markdown links and whitespace in CI. Test the production folder and zip under the pinned wallet, not only the dev server.
+- Persist issuance intent before PIN with ride/taxi addresses, passenger, provider/issuer, destination account, token, items, decimal strings, integer base units, network, and prestate digest.
+- Immediately reread ride and taxi before issue. Persist returned invoice address and creation txid before taxi occupancy projection. Read back the exact invoice and creation transaction; verify terms and issuer evidence.
+- If the issue response is missing/malformed or times out, retain `submission_unknown`. Reconcile against exact deterministic identity/evidence; never recreate from an empty or bounded list result.
+- Persist payment intent before PIN. Immediately reread the exact invoice; verify retained issuance tx/issuer, lifecycle owner/status, recipient, destination account, token, items, and supported base-unit total. Description `ride=...` remains discovery-only.
+- Persist returned payment txid or unknown outcome before passenger ride projection. Verify exact invoice transition and actual DEBIT/CLAIM evidence. Taxi/ride projection failures have distinct pending states and cannot trigger repay/reissue.
+- Exercise fault injection before intent, after intent, after remote acceptance/before response, after response/before identity persistence, after persistence/before projection, during restart, and on duplicate invocation.
 
-**Executable exit:** clean install/build produces no unlisted referenced asset; all seven current PNG cases are regressed; production folder and zip render markers/layers/routes with zero denied requests; checked-in test/lint/CI gates pass from a clean clone.
+**Executable exit:** collected tests cover wrong issuer evidence/account/token/recipient, copied description, duplicate invoice, fare change, paid/cancelled state, timeout before/after acceptance, empty response, every restart boundary, projection failure, repeated click, and profile/network switch. Mutation counters remain `issue <= 1` and `pay <= 1`; unknown outcomes block mutation. Then two isolated non-production profiles complete request/read/issue/read/pay/read/project/read on the pinned wallet/core using synthetic funds.
 
-## Batch 2A — Browser privacy and integration (P1; before public use)
+## Batch 1D — Package and production-wallet closure (P0)
 
-- Remove automatic IP-geolocation fallback after GPS denial. Require separate explicit consent and show provider/retention implications.
-- Centralize external browser requests. URL-encode, debounce and abort Nominatim searches; make tile/geocoder/router providers configurable; replace the OSRM public demo service for production.
-- Disclose that search text, viewed areas, IP and route coordinates leave the WebView. Keep exact pickup/destination and live location out of chain and durable module storage.
-- Gate all Nexus writes on wallet initialization, active user, intended network, sync completion and supported core/wallet mode. Keep mutating endpoint constants closed and test that reads cannot trigger mutation.
+**Targets:** `webpack.config.babel.js`, `nxs_package.json`, package tests, clean folder/zip fixture.
 
-**Executable exit:** browser tests prove no third-party call before consent, no call after denial/revocation, cancellation of stale search/route requests, redacted diagnostics and fail-closed write gates for logged-out/wrong-network/syncing/unsupported states.
+- Inline map/routing images deliberately or list every emitted runtime dependency explicitly. NexusInterface manifests do not support wildcard serving.
+- Inventory references from emitted JS/CSS/chunks, not only file existence. Fail if a referenced runtime file is outside `nxs_package.json.files`.
+- Build and inspect both production folder and release zip. Keep source maps/license files out of runtime manifest only when the bundle does not request them.
+- Install on pinned NexusInterface with production module policy configured for the acceptance fixture; render Leaflet markers, layers, routing icons, main icon, and route UI with zero denied requests.
 
-## Batch 2B — Complete discovery and Distordia v0.2 migration (P1)
+**Executable exit:** clean install/build has zero referenced/unlisted files; all seven current PNG cases are regressed; folder and zip installations render without missing-resource errors; aggregate verify and exact-head CI pass.
 
-- Implement paginated, cancellable, deduplicated reads returning records plus completeness/error. Preserve known state on later-page failure.
-- Design explicit adapters for legacy v1 and Distordia draft v0.2 request/offer/agreement, taxi and per-agreement rating assets. Never relabel legacy records as v0.2.
-- Verify canonical owner-to-role mapping for passenger request/agreement, driver offer/taxi and rating rater. Bind fare and invoice to the accepted offer/agreement.
-- Resolve current draft gaps before claiming compliance: cross-client mutation concurrency/CAS, namespace-to-genesis verification, self-address stamping recovery, agreement/invoice linkage, and privacy-preserving precise-location handoff.
+## Batch 2A — Consent, privacy, and write readiness (P1; before public use)
 
-**Executable exit:** multi-page and partial-page tests pass; unknown versions/owners fail closed; v0.2 conformance fixtures are shared with the standards repository; two-party ownership and fare/invoice bindings are demonstrated without precise on-chain coordinates.
+- Remove automatic IP geolocation after GPS denial. Add separate provider-specific opt-in, revocation, and disclosure for IP location, geocoder, tiles, and router.
+- URL-encode, debounce, and abort Nominatim searches. Make providers configurable and replace the public OSRM demo boundary for production.
+- Keep precise pickup/destination, route, and live position off-chain. Use coarse/expiring discovery plus private authorized handoff consistent with the design context.
+- Gate writes on initialized wallet, active profile, intended network, sync completion, compatible core/wallet, and supported mode. Keep mutation endpoint constants closed.
 
-## Remaining live gates
+**Executable exit:** browser tests prove no third-party call before consent or after denial/revocation, stale requests cancel, logs/storage contain no sensitive coordinates/secrets, and every unsupported wallet/core condition rejects before PIN.
 
-After all offline batches pass: supported-wallet production installation, isolated current-core integration, wrong-network/sync/restart tests, exact mutation readback, profile/session lock cleanup, synthetic two-profile settlement, and exact-head CI. Real funds and production profiles remain out of scope until maintainers explicitly approve a separate acceptance plan.
+## Batch 2B — Complete discovery and open protocol migration (P1)
+
+- Implement cancellable pagination with deduplication and explicit complete/partial/error state for taxis, rides, ratings, and invoices. Preserve prior known records when refresh fails.
+- Keep legacy v1 adapters explicit. Implement separate role-owned passenger request, provider offer, passenger agreement, and per-agreement rating records only from shared versioned fixtures.
+- Bind human/autonomous actions to canonical namespace/operator/delegation evidence rather than a payload string. Use the same public record/API contract for both provider types.
+- Bind agreement, fare terms, invoice creation identity, payment evidence, and rating authority. Resolve namespace/genesis mapping, self-address references, cross-client concurrency, and private location handoff before claiming conformance.
+
+**Executable exit:** multi-page and later-page failure tests pass; legacy and new schemas never alias; shared conformance fixtures prove role ownership and invoice/rating binding without precise public trip data; independent clients can reproduce accepted evidence.
+
+## Remaining live and release gates
+
+After all offline batches pass: production wallet installation, isolated current-core API compatibility, wrong-network/sync/client-mode cases, restart/crash recovery, exact transaction/history readback, profile/session cleanup, two-profile synthetic settlement, and exact-head CI. Real funds and production profiles require a separately approved acceptance plan.

@@ -1,84 +1,91 @@
 # NexGo architecture and acceptance boundaries
 
-Reviewed 2026-09-23 at `master` HEAD `78435a5d4f97deb27770051a8aacbbc3360b9355` with a clean baseline. Runtime remains the `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`; the commits after upstream feature `7a9c481` are documentation-only. This document is the current architecture authority; see the [2026-09-23 executed review](DEVELOPMENT_REVIEW_2026-09-23.md) and [development plan](DEVELOPMENT_PLAN.md).
+Reviewed 2026-09-25 against repository commit `7da750f1f674b9af839c650f6a47bc4a2af15729` (`master`, matching `origin/master` at review start). The commit changed documentation only relative to `78435a5d4f97deb27770051a8aacbbc3360b9355`; the application remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. See the current [evaluation](EVALUATION.md), [development plan](DEVELOPMENT_PLAN.md), and [2026-09-25 executed review](DEVELOPMENT_REVIEW_2026-09-25.md).
 
-**Status: prototype; invoice creation, invoice ingestion, settlement recovery and package closure are release blockers. No real payment or profile mutation is approved.**
+**Status: prototype. Invoice creation/decoding, canonical authority, durable settlement, package closure, privacy, and engineering gates remain release blockers. No real payment, invoice, profile mutation, or production release is approved.**
 
-## Source contract reviewed
+## Authority and reviewed sources
 
-| Source | Exact identity | Relevant evidence |
+| Source | Exact identity | Architectural use |
 |---|---|---|
-| NexGo | `78435a5d4f97deb27770051a8aacbbc3360b9355` | `src/` tree `b0a45a0…`; `src/api/nexusAPI.js` blob `3ef4357…`; `package-lock.json` blob `81e2beeb…` |
-| LLL-TAO stable | `master` `1185145534a20ed4d2288e4513c505f271be536d` (5.1.6 tag commit) | invoice `create.cpp` `ebd87ba…`, invoice `json.cpp` `3a24e1f…`, `extract.cpp` `aeca4c4…`, template `update.cpp` `14d796e…` |
-| LLL-TAO development | `merging` `8af9c3387244b4d396c0e00ee81cea78bb9c0177` | the same invoice create/json blobs; command registration and current update semantics checked |
-| NexusInterface | `master` `1e923d46a9cde1cf22b8608257c92da184aece16` | module `webview.js` `e905ee9…`, wallet API `api.js` `b123907…`, preload `26d7331…` |
-| Distordia Standards | `main` `83b9f0902a062d9a97089c2729889ea565d7af82` | ride v0.2 `0df8f03…`, taxi v0.2 `d7c0003…`, rating v0.2 `68fa21a…` |
+| NexGo | `7da750f1f674b9af839c650f6a47bc4a2af15729` | Reviewed application and tracked documentation |
+| NexGo runtime | `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f` | Actual module behavior |
+| LLL-TAO stable | `master` `1185145534a20ed4d2288e4513c505f271be536d` (5.1.6 release commit) | Supported initial invoice/register contract |
+| LLL-TAO development | `merging` `8af9c3387244b4d396c0e00ee81cea78bb9c0177` | Drift check; reviewed invoice create/JSON behavior matches stable |
+| NexusInterface | `master` `1e923d46a9cde1cf22b8608257c92da184aece16` | Module bridge and wallet trust boundary |
+| Design context | untracked `vision.md`, SHA-256 `5829f1f5e8eb5a6a0fb748c4f031a29da2296b24a527c309fd741ddf411c6bfb` | Intended open mobility protocol; not implementation evidence and not part of the reviewed commit |
 
-These are source snapshots, not a live node/wallet acceptance result. The repository's vendored invoice documentation is stale where it says creation uses `account`; current stable and development core source both resolve the destination from `to`, `name_to` or `address_to`.
+LLL-TAO source, not the vendored API prose, is authoritative when they disagree. Relevant stable blobs are invoice create `ebd87badd6075db45719d30f740c7cf9b55f94bc`, invoice JSON `3a24e1fa9b2a2542bc46b35ee9f381ee7cb29b10`, invoice pay `fd253638fadb2336430615ae57d2cd3f489a294c`, invoice registration `initialize.cpp`, address extraction `aeca4c437abc68116175f51ceee2278ab2ed48f9`, and generic update `14d796e0171cf860ceacdbbd797be928953c7f28`. These snapshots establish source semantics only; no live node or wallet acceptance was run.
+
+## Product boundary from the design context
+
+The intended product is an open coordination protocol, not a closed taxi marketplace. Independent wallets, fleet systems, accessibility clients, human providers, and autonomous agents should be able to use the same versioned records. Namespace/accountability claims, role-owned request/offer/agreement records, settlement evidence, and portable reputation are target protocol concepts.
+
+The current code does not implement that target. It publishes legacy taxi and ride data, including precise coordinates, and uses one wallet module UI as the orchestrator. Human and autonomous labels are payload strings rather than verified delegation/capability evidence. Ratings are mutable per-passenger maps rather than agreement-bound evidence. Architecture and UI must describe these as prototype records, not Distordia v0.2 compliance.
 
 ## Runtime and trust boundaries
 
 ```text
-NexGo React module (Electron WebView / browser context)
-  - Redux UI and persisted non-secret settings
-  - direct third-party map/geocode/location requests
-  - nexus-module bridge calls
-            |
-            | IPC: apiCall / secureApiCall / updateState / updateStorage
-            v
+NexGo React module (Electron WebView)
+  - Redux UI and non-secret module settings
+  - component-local ride/invoice orchestration
+  - direct browser requests to location/map/routing providers
+             |
+             | nexus-module IPC: apiCall / secureApiCall / storage
+             v
 NexusInterface main process
-  - owns active core configuration and HTTP Basic credentials
-  - injects active session only when core reports multiuser
-  - secureApiCall shows endpoint + params, prompts for PIN, injects PIN
-  - current source has no secure endpoint allowlist
-            |
-            | POST JSON over wallet-selected HTTP/HTTPS transport
-            v
+  - owns core transport and HTTP Basic credentials
+  - injects active multiuser session
+  - displays endpoint/parameters and requests PIN for secureApiCall
+  - reviewed source does not enforce a secure endpoint allowlist
+             |
+             | POST JSON over wallet-selected HTTP(S)
+             v
 Trusted Nexus core
-  - profile/sigchain authorization and register ownership
+  - sigchain authorization and canonical register state
   - invoice conditional transfer and atomic pay DEBIT + CLAIM
 ```
 
-NexGo has no application backend. It must not collect, persist or log the profile password, PIN, API Basic credentials or Nexus session ID. Current code respects that boundary: writes use `secureApiCall`; the wallet owns the PIN and session; persisted module settings contain vehicle and public payment-account identifiers only. Future durable settlement storage may contain public profile/network/register/tx identities and intent state, never secrets. Wallet HTTPS currently sets `rejectUnauthorized: false`; deployment trust therefore depends on a controlled local node or separately secured transport.
+NexGo has no application backend. Passwords, PINs, API Basic credentials, and session IDs must never enter module state, storage, logs, or protocol records. Current writes use `secureApiCall`, so the wallet owns PIN/session handling. That is a useful boundary, but a PIN prompt is not application-level authorization: mutating endpoint identifiers need to be fixed internal values, every displayed parameter needs validation before the prompt, and writes need gates for active profile, intended network, synchronization, compatible core/wallet, and supported mode.
 
-A PIN dialog is not business authorization. NexusInterface currently accepts an arbitrary endpoint string from a module, displays it, and invokes it after PIN entry. NexGo must keep mutating endpoints as fixed internal constants, validate every displayed parameter before requesting the PIN, and gate writes on active profile, intended network, compatible core/wallet, non-client capability where required, and a synchronized node.
+## Current records and canonical identity
 
-## Current records and authoritative identity
+- Taxi assets are typed JSON registers. Current code stores mutable `driver`, vehicle data, exact coordinates, and timestamps.
+- Ride requests and ratings are raw JSON registers. Ride payload `version: 1` is not the Distordia v0.2 request/offer/agreement model.
+- Core invoice registers are readonly typed payloads. `InvoiceToJSON` returns register metadata at top level and invoice terms/status under `json`.
+- Core invoice payment is one atomic DEBIT + CLAIM transaction. Taxi occupancy and passenger ride projections are separate application writes and are not atomic with payment.
 
-- Taxi assets are typed JSON registers. Current code also stores mutable claimed `driver`, mutable vehicle ID, exact coordinates and timestamp.
-- Ride requests and ratings are legacy raw JSON blobs. The module writes ride payload `version: 1`; this is not the Distordia v0.2 request/offer/agreement protocol.
-- Invoices are current-core readonly invoice registers. Canonical metadata is top-level (`address`, `owner`, timestamps); invoice terms are under `json` (`account`, `recipient`, `items`, `amount`, `token`, `status`).
-- Core payment is atomic for the invoice's DEBIT + CLAIM. Taxi and ride projections are separate, non-atomic application writes.
+For taxi and ride assets, canonical `address` and `owner` are mandatory. Payload identity fields are assertions only and must match canonical ownership or an independently verified namespace/delegation binding. Missing owner/address, unknown schema/state, malformed coordinates, unsafe number conversion, or contradictory identity must reject rather than default to empty values, `(0,0)`, `requesting`, or a payload-supplied owner.
 
-Every accepted register must preserve the canonical envelope: `address`, `owner`, type/form, created/modified metadata and the supported payload schema. Payload identity claims are redundant assertions, not ownership. Require them to match canonical ownership or a separately verified namespace binding. Reject absent/invalid canonical ownership, unknown schema versions, invalid states, malformed addresses, unsafe numeric precision and contradictory claims. Never replace a missing owner with `passenger-genesis`, `driver`, or another payload field.
+Taxi mutation must target the exact canonical address selected from a verified owned register. The current name rebuilt from mutable vehicle settings, first-result selection, and preference for mutable `driver` over the active profile genesis are not authority.
 
-Taxi mutations must use the canonical address returned/read back for the selected owned taxi. Do not update a name rebuilt from mutable settings, choose the first local taxi silently, or prefer a mutable `driver` claim over the active profile's canonical genesis. A transport or authentication failure is not an empty asset list and must not invite duplicate creation.
+## Invoice contract and ownership lifecycle
+
+The reviewed stable core establishes these semantics:
+
+1. `invoices/create/invoice` calls `ExtractAddress(jParams, "to")`. Accepted destination forms are `to`, `name_to`, and `address_to`; `account` is not a destination input. The resulting canonical destination is stored as `json.account`.
+2. Creation requires `recipient` and non-empty `items`, derives token/decimals from the destination account, calculates the total, and returns an invoice address and transaction ID.
+3. `InvoiceToJSON` starts with canonical register JSON, then adds invoice status inside `json`. Terms such as `account`, `recipient`, `items`, `amount`, and `token` are nested under `json`.
+4. Invoice ownership is lifecycle state, not immutable issuer identity. The registered `outstanding` standard requires a system-owned conditional register; `paid` requires current owner equal to `json.recipient`. The create transaction genesis/retained issue evidence, not the current top-level `owner`, must establish issuer authority.
+5. `invoices/pay/invoice` reads the exact invoice, rejects paid/cancelled status and wrong-token source accounts, and emits one DEBIT plus CLAIM transaction.
+6. Core invoice source serializes amount values through floating-point JSON and reconstructs payment amount from `double * token figures`. NexGo must submit decimal strings, retain expected integer base units, constrain the supported amount domain, and verify the actual target-core transaction amount. JavaScript `parseFloat` is not acceptable money state.
+
+Current NexGo violates the first two adapter boundaries: `createRideInvoice` sends `account`, while `normalizeInvoice` reads terms at the top level and fabricates empty/zero defaults. The UI therefore cannot safely issue, identify, display, authorize, or reconcile current-core invoices.
 
 ## Revision and transition strictness
 
-The core's returned `version` is not an application compare-and-set revision, and current public `assets/update/*` source exposes no `expected_version`/`If-Match` parameter. A raw update replaces the whole allocated payload. Therefore:
+Current public `assets/update/*` source exposes no compare-and-set parameter. Raw updates replace the allocated payload. The core-returned register version is not an application CAS token. Therefore:
 
-1. Never merge an old component snapshot (`currentData`) into a write.
-2. Before a PIN prompt, read the exact address and compare owner, schema, state, modified metadata and a canonical payload digest with the intent snapshot.
-3. Permit only a declared transition from that snapshot; serialize one pending mutation per profile/network/register in durable module state.
-4. After submission, retain txid/unknown outcome and read the exact register/history back before projecting success.
-5. Treat any changed prestate as a conflict requiring a fresh user decision.
-6. Do not claim strict cross-client compare-and-set for mutable raw blobs. A release design must either prove an enforceable core condition or use append-only, owner-specific typed records so stale whole-blob overwrites cannot control settlement.
+1. Never merge component-held `currentData` into a write.
+2. Persist a public intent snapshot before a consequential call.
+3. Immediately before the PIN prompt, read the exact address and compare canonical owner, schema, state, modified metadata, and canonical payload digest.
+4. Permit only a declared transition from that snapshot; serialize one pending operation per wallet/profile/network/register.
+5. Persist returned remote identity or `submission_unknown` before any projection.
+6. Read back the exact register/history/transaction before finalizing.
+7. Treat changed prestate as conflict requiring a fresh decision.
+8. Do not claim cross-client serializability unless a core-enforced condition is demonstrated. Prefer append-only, role-owned records where stale whole-blob replacement would control money or authority.
 
-Distordia v0.2's passenger request, driver-owned offer and passenger agreement improve ownership separation and fare binding, but remain drafts and do not by themselves provide CAS. Legacy and v0.2 records must be explicit separate adapters and UI states.
-
-## Current Nexus invoice semantics
-
-For the reviewed current core:
-
-- `invoices/create/invoice` resolves the payment destination through `to`, `name_to` or `address_to`, requires `recipient` and non-empty `items`, derives token and total from the destination account, and returns `success`, `address`, `txid`.
-- Invoice reads encode canonical register metadata at top level and terms/status under `json`.
-- `invoices/pay/invoice` takes invoice `address` and payer `from`, rejects paid/cancelled invoices and wrong-token accounts, then builds one atomic DEBIT + CLAIM transaction.
-- Asset raw updates have size/allocation and ownership enforcement in core, but no public optimistic-revision argument.
-
-NexGo currently sends `account` rather than `to`, so invoice creation is incompatible with both reviewed current core branches. Its normalizer reads terms at top level, so a current invoice becomes zero/empty and loses token/items. Both directions must fail closed until fixed and tested against pinned response fixtures.
-
-## Required settlement state machine
+## Required settlement protocol
 
 ```text
 issue_intent_persisted
@@ -86,34 +93,32 @@ issue_intent_persisted
   -> invoice_identity_known | submission_unknown
   -> invoice_readback_verified
   -> taxi_projection_pending
+  -> issue_complete
 
 payment_intent_persisted
   -> payment_submitted
   -> payment_tx_known | submission_unknown
-  -> invoice_payment_verified
+  -> invoice_and_transaction_verified
   -> ride_projection_pending
   -> complete
 ```
 
-Before issuance, reread the ride and selected taxi; verify canonical owners, supported state/version, target provider and passenger, and freeze exact terms in integer base units. Persist intent before invoking `secureApiCall`. Consume and persist returned invoice address/txid before any taxi projection; timeout or empty/malformed success stays `submission_unknown` and forbids blind recreation.
+Issuance intent freezes ride/taxi canonical addresses, passenger, provider, destination account, token, item decimals, integer base units, protocol version, and intended network. The returned invoice address and creation txid must be retained before taxi projection. A timeout, undefined response, or projection failure never authorizes invoice recreation.
 
-Before payment, reread the exact invoice and bind canonical issuer/owner, recipient, destination account, token, integer/base-unit amount, items and status to the accepted ride agreement. A description `ride=...` is only a discovery hint. Persist payment intent before PIN. After submission, verify exact invoice and transaction/history evidence. A ride update failure is `ride_projection_pending`, never a payment failure and never permission to repay. Paid invoices disappear from the outstanding list, so recovery must query the retained exact address and paid/history endpoints.
+Payment intent freezes the retained issuance identity and exact invoice terms. Description text such as `ride=...` is only a discovery hint. Immediately before payment, reread the exact address and verify nested terms, lifecycle owner/status, creation identity, payer account token, and expected base units. After payment, verify the returned transaction and exact invoice transition. A projection failure is `ride_projection_pending`, not payment failure and never permission to repay.
 
-## Browser and external-service boundary
+Recovery uses only registered/source-confirmed reads: exact `invoices/get/invoice`, invoice `history`/`transactions`, and ledger transaction lookup where required. It must not infer absence from `invoices/list/outstanding`, because a paid invoice leaves that subset.
 
-The WebView directly contacts:
+## Browser privacy and external services
 
-- `ipapi.co` automatically after GPS failure/denial;
-- Nominatim with user-entered address text;
-- OpenStreetMap tile servers with viewed map areas;
-- the default public OSRM demo router through Leaflet Routing Machine with exact route coordinates.
+The WebView currently contacts `ipapi.co`, Nominatim, OpenStreetMap tiles, and Leaflet Routing Machine's default router. GPS failure or denial automatically triggers IP geolocation. Search text, viewed map areas, and exact route coordinates leave the wallet boundary. Exact pickup/destination labels and coordinates are then written on-chain.
 
-These requests do not pass through an application backend or Nexus wallet proxy. GPS denial must not silently become consent to IP geolocation. Production must disclose each recipient, require explicit opt-in for location/geocoding/routing, URL-encode/debounce/cancel searches, use a production-suitable configurable router, and prevent exact coordinates/searches from entering logs or durable state. Precise pickup/destination and live location must move off-chain under the v0.2 privacy model before public deployment.
+Production architecture must require provider-specific consent, never reinterpret GPS denial as IP-location consent, encode/debounce/cancel searches, use configurable production-suitable providers, and keep precise trip/location data off-chain. The target protocol may publish coarse expiring discovery and integrity commitments, with private capability-controlled handoff between authorized parties.
 
-## Discovery, packaging and quality boundary
+## Discovery, packaging, and quality boundary
 
-All global reads must paginate, deduplicate and expose `{records, complete, error}`. Later-page failure is partial/error, not an empty network. Validate UTF-8 byte size before PIN; the 2026-09-23 offline probe reached a 2,544-byte ride payload and still invoked the secure-call stub.
+All global enumeration must paginate, deduplicate, and return `{records, complete, error}`. A bounded page or transport failure is not proof of an empty market. Known state must remain visible as partial/stale when refresh fails.
 
-The production manifest is the wallet file-serving allowlist. A clean build emits `app.js` plus seven referenced PNGs; all seven are absent from `nxs_package.json.files`. The module is not installable as a complete production package until a clean folder/zip install on the pinned NexusInterface version renders every marker/layer/routing asset with zero denied requests.
+The production manifest is the NexusInterface file-serving allowlist. The clean reviewed build emits seven PNGs referenced by `app.js`; none is listed in `nxs_package.json.files`. A successful Webpack compilation is therefore not evidence of an installable production module.
 
-No checked-in test, lint or CI command exists. Release acceptance requires collected contract, envelope, transition, storage/redaction, network-denial, package-inventory and browser-integration tests plus the clean production build. Live acceptance uses isolated non-production profiles and funds only after all offline gates pass.
+No checked-in `test`, `lint`, package-inventory, or CI gate exists. Release acceptance requires collected adapter, authority, transition, durability, privacy, pagination, package, and browser tests; a clean production folder/zip install on the pinned wallet; and isolated non-production current-core acceptance before any real-value use.
