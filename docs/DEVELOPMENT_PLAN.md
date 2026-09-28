@@ -1,6 +1,6 @@
 # NexGo development plan
 
-Status re-reviewed 2026-09-25 against commit `7da750f1f674b9af839c650f6a47bc4a2af15729`; runtime remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. A clean offline install/build passes, but all release blockers in the [current evaluation](EVALUATION.md) remain. Architecture authority: [ARCHITECTURE.md](ARCHITECTURE.md). Executed evidence: [DEVELOPMENT_REVIEW_2026-09-25.md](DEVELOPMENT_REVIEW_2026-09-25.md).
+Status re-reviewed 2026-09-28 against commit `019e1fd79643e57d075b8efbd16778f0027d9ae2`; runtime remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. A clean offline install/build passes, but all release blockers in the [current evaluation](EVALUATION.md) remain. The refreshed review also demonstrates the wallet PIN-cancellation false-success path. Architecture authority: [ARCHITECTURE.md](ARCHITECTURE.md). Executed evidence: [DEVELOPMENT_REVIEW_2026-09-28.md](DEVELOPMENT_REVIEW_2026-09-28.md).
 
 **No real invoice, payment, profile write, production installation, or release until Batch 0 and Batches 1A–1D exit. Next implementation slice: Batch 0 followed by Batch 1A.**
 
@@ -27,9 +27,9 @@ Status re-reviewed 2026-09-25 against commit `7da750f1f674b9af839c650f6a47bc4a2a
 - Accept decimal strings at the UI/adapter boundary and convert with a strict decimal-to-integer function parameterized by token decimals. Reject exponent notation, negatives, excess scale, overflow, unsafe integer conversion, non-finite values, and item/total disagreement.
 - Because reviewed core invoice JSON and pay code use doubles, define a conservative supported amount range and require isolated target-core tests that compare requested base units with the actual DEBIT contract. Do not claim arbitrary-token exactness from offline JavaScript fixtures.
 - Require ride canonical `address` and `owner`, explicit legacy version/state, finite/ranged coordinates, and matching `passenger-genesis` if present. Preserve register metadata; reject unknown shapes.
-- Handle wallet/API response envelopes explicitly. An error member, undefined return, malformed success, or absent address/txid is not success.
+- Handle wallet/API response envelopes explicitly. Require the command-specific success shape and remote identities (`address` plus `txid` for invoice issue; payment `txid` for pay). An error member, PIN cancellation/`undefined`, malformed success, or absent identity is non-success and cannot authorize any projection or success UI.
 
-**Executable exit:** default offline tests prove writer uses `to` and never `account`; current nested invoice terms round-trip; current owner is not accepted as immutable issuer; missing/conflicting ride ownership rejects; malformed precision/status/token/version rejects; and no rejected request reaches `secureApiCall`. Target-core acceptance proves exact supported base units.
+**Executable exit:** default offline tests prove writer uses `to` and never `account`; current nested invoice terms round-trip; current owner is not accepted as immutable issuer; missing/conflicting ride ownership rejects; malformed precision/status/token/version rejects; and rejected, cancelled, undefined, error, or malformed results produce no downstream secure call or success state. Target-core acceptance proves exact supported base units.
 
 ## Batch 1B — Canonical authority and revision-safe transitions (P0)
 
@@ -48,14 +48,14 @@ Status re-reviewed 2026-09-25 against commit `7da750f1f674b9af839c650f6a47bc4a2a
 
 **Targets:** `src/services/rideSettlement.js`, durable wallet-owned intent storage, `Driver.js`, `Passenger.js`, `test/ride-settlement.test.js`.
 
-- Persist issuance intent before PIN with ride/taxi addresses, passenger, provider/issuer, destination account, token, items, decimal strings, integer base units, network, and prestate digest.
+- Persist issuance intent before PIN with ride/taxi addresses, passenger, provider/issuer, destination account, token, items, decimal strings, integer base units, network, and prestate digest. A cancelled PIN prompt records a non-submitted disposition and triggers neither taxi projection nor success UI.
 - Immediately reread ride and taxi before issue. Persist returned invoice address and creation txid before taxi occupancy projection. Read back the exact invoice and creation transaction; verify terms and issuer evidence.
 - If the issue response is missing/malformed or times out, retain `submission_unknown`. Reconcile against exact deterministic identity/evidence; never recreate from an empty or bounded list result.
-- Persist payment intent before PIN. Immediately reread the exact invoice; verify retained issuance tx/issuer, lifecycle owner/status, recipient, destination account, token, items, and supported base-unit total. Description `ride=...` remains discovery-only.
+- Persist payment intent before PIN. Immediately reread the exact invoice; verify retained issuance tx/issuer, lifecycle owner/status, recipient, destination account, token, items, and supported base-unit total. Description `ride=...` remains discovery-only. PIN cancellation performs no payment, ride projection, or success UI.
 - Persist returned payment txid or unknown outcome before passenger ride projection. Verify exact invoice transition and actual DEBIT/CLAIM evidence. Taxi/ride projection failures have distinct pending states and cannot trigger repay/reissue.
 - Exercise fault injection before intent, after intent, after remote acceptance/before response, after response/before identity persistence, after persistence/before projection, during restart, and on duplicate invocation.
 
-**Executable exit:** collected tests cover wrong issuer evidence/account/token/recipient, copied description, duplicate invoice, fare change, paid/cancelled state, timeout before/after acceptance, empty response, every restart boundary, projection failure, repeated click, and profile/network switch. Mutation counters remain `issue <= 1` and `pay <= 1`; unknown outcomes block mutation. Then two isolated non-production profiles complete request/read/issue/read/pay/read/project/read on the pinned wallet/core using synthetic funds.
+**Executable exit:** collected tests cover wrong issuer evidence/account/token/recipient, copied description, duplicate invoice, fare change, paid/cancelled state, PIN cancellation, timeout before/after acceptance, empty response, every restart boundary, projection failure, repeated click, and profile/network switch. PIN cancellation and every non-success envelope produce zero downstream projections; mutation counters remain `issue <= 1` and `pay <= 1`; unknown outcomes block mutation. Then two isolated non-production profiles complete request/read/issue/read/pay/read/project/read on the pinned wallet/core using synthetic funds.
 
 ## Batch 1D — Package and production-wallet closure (P0)
 

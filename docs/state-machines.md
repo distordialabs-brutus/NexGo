@@ -2,10 +2,13 @@
 
 State machine diagrams for every major flow in the NexGo app.
 
-> These describe the current UI flows, not verified payment atomicity. The
-> [architecture](ARCHITECTURE.md), [development plan](DEVELOPMENT_PLAN.md) and
-> [2026-09-08 review](DEVELOPMENT_REVIEW_2026-09-08.md) define the missing
-> invoice evidence, reconciliation and packaging acceptance gates.
+> These diagrams describe the current UI orchestration, including known unsafe
+> behavior; they are not verified payment atomicity or a normative protocol.
+> The [architecture](ARCHITECTURE.md), [current evaluation](EVALUATION.md),
+> [development plan](DEVELOPMENT_PLAN.md), and
+> [2026-09-28 executed review](DEVELOPMENT_REVIEW_2026-09-28.md) define the
+> strict invoice, authority, exact-money, recovery, privacy, and package gates.
+> Current invoice controls are prohibited for real profiles or funds.
 
 ---
 
@@ -163,10 +166,12 @@ stateDiagram-v2
     state PayingInvoice {
         [*] --> Paying
         Paying : API: invoices/pay/invoice
-        Paying : API: assets/update/asset\nformat=raw status=paid
+        Paying --> UnsafeProjection : fulfilled result OR PIN cancellation\n(current code does not validate response)
+        UnsafeProjection : API: assets/update/asset\nformat=raw status=paid
+        UnsafeProjection : no persisted payment txid,\nreadback, or recovery state
     }
 
-    PayingInvoice --> DestinationSelected : Success\nshowSuccessDialog()
+    PayingInvoice --> DestinationSelected : UI reports success if both calls resolve
     PayingInvoice --> DestinationSelected : Error\nshowErrorDialog()
 
     DestinationSelected --> SearchingDestination : User changes\ndestination
@@ -294,33 +299,48 @@ stateDiagram-v2
 
 ---
 
-## 7. Decentralized Hire + Settlement Flow
+## 7. Settlement: observed unsafe flow and required executable contract
 
-This is the implemented decentralized service flow aligned with the Nexus Assets and Invoices APIs. Because the ride request raw asset is owned by the passenger, provider acceptance is represented by invoice issuance plus the provider setting the taxi status to `occupied`.
+The current UI is not a settlement state machine. It correlates by description text, sends the stale invoice destination key `account`, discards nested invoice terms, retains no issue/payment identity, and performs projections after any fulfilled mutation promise—including `undefined` returned when the wallet PIN prompt is cancelled.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> TaxiPublished
+    [*] --> RideRequested
+    RideRequested --> IssueCall : Driver clicks issue
+    IssueCall --> TaxiProjection : promise fulfilled, including undefined
+    IssueCall --> ErrorDialog : promise rejected
+    TaxiProjection --> SuccessDialog : taxi update resolves
+    TaxiProjection --> ErrorDialog : taxi update rejects\ninvoice outcome not retained
 
-    TaxiPublished --> RideRequested : Passenger creates\nnexgo-ride raw asset
-    RideRequested --> AcceptedByHuman : Driver creates invoice\nand sets taxi occupied
-    RideRequested --> AcceptedByAutonomous : Autonomous fleet agent\ncreates invoice via API
-
-    state InvoiceCreated {
-        [*] --> Outstanding
-        Outstanding : API: invoices/create/invoice
-        Outstanding : recipient = passenger genesis
-        Outstanding : account = provider payment account
-        Outstanding : line item description\ncontains ride=<ride-address>
-    }
-
-    InvoiceCreated --> Paid : Passenger pays\ninvoices/pay/invoice
-    InvoiceCreated --> Cancelled : Provider cancels\ninvoices/cancel/invoice
-    Paid --> Completed : Passenger updates ride raw asset\nstatus = paid
-    Completed --> AvailableAgain : Taxi status returns to available\nPassenger can rate provider
-    Cancelled --> [*]
-    AvailableAgain --> [*]
+    RideRequested --> PaymentCall : Passenger sees correlated outstanding item
+    PaymentCall --> RidePaidProjection : promise fulfilled, including undefined
+    PaymentCall --> ErrorDialog : promise rejected
+    RidePaidProjection --> SuccessDialog : ride update resolves
+    RidePaidProjection --> ErrorDialog : ride update rejects\npayment outcome not retained
 ```
+
+The replacement must implement the following durable protocol. This is the acceptance target, not current behavior:
+
+```mermaid
+stateDiagram-v2
+    [*] --> IntentPersisted
+    IntentPersisted --> AuthorizationCancelled : PIN cancelled\nno submission or projection
+    IntentPersisted --> Submitted : wallet submits once
+    Submitted --> IdentityKnown : strict address/txid result
+    Submitted --> SubmissionUnknown : timeout, malformed/empty result, interruption
+    IdentityKnown --> EvidenceVerified : exact invoice + creation/payment tx readback
+    IdentityKnown --> Held : evidence missing/conflicting
+    SubmissionUnknown --> EvidenceVerified : exact recovery finds matching evidence
+    SubmissionUnknown --> Held : absence cannot be proven safely
+    EvidenceVerified --> ProjectionPending
+    ProjectionPending --> Complete : exact idempotent projection readback
+    ProjectionPending --> ProjectionPending : restart/retry projection only
+    AuthorizationCancelled --> [*]
+    Held --> [*]
+    Complete --> [*]
+```
+
+Issuer verification binds the exact invoice address to its retained creation transaction and provider genesis. Current invoice owner is lifecycle evidence: outstanding is system-owned and paid is recipient-owned. Payment verification compares nested terms and actual DEBIT/CLAIM evidence in bounded exact base units. Description `ride=...` is discovery-only. Neither an empty outstanding list nor a projection status proves issue/payment absence or success.
 
 ---
 
@@ -377,8 +397,8 @@ stateDiagram-v2
         AssetsGet : Verify asset (public)
         AssetsList : List own assets (auth)
         AssetsCreateRaw : Create ride request (auth)
-        InvoicesCreate : Create settlement invoice (planned)
-        InvoicesPay : Pay settlement invoice (planned)
+        InvoicesCreate : Prototype call (unsafe contract; blocked)
+        InvoicesPay : Prototype call (unsafe recovery; blocked)
     }
 
     state ExternalAPIs {

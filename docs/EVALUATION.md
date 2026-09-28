@@ -1,12 +1,12 @@
 # NexGo current evaluation
 
-Current as of 2026-09-25 for repository commit `7da750f1f674b9af839c650f6a47bc4a2af15729`. This is the rolling issue register; dated evidence is preserved in the [2026-09-25 development review](DEVELOPMENT_REVIEW_2026-09-25.md). Architecture and repair order are defined in [ARCHITECTURE.md](ARCHITECTURE.md) and [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md).
+Current as of 2026-09-28 for repository commit `019e1fd79643e57d075b8efbd16778f0027d9ae2`. This is the rolling issue register; dated evidence is preserved in the [2026-09-28 development review](DEVELOPMENT_REVIEW_2026-09-28.md). Architecture and repair order are defined in [ARCHITECTURE.md](ARCHITECTURE.md) and [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md).
 
 ## Verdict
 
 **Prototype; not payment-release-ready, package-ready, privacy-ready, or production-ready.**
 
-There has been no application development since the prior reviewed runtime. Commit `7da750f…` changed only `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT_PLAN.md`, and added the 2026-09-23 review; `src/` remains tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. The 2026-09-25 offline rebuild reproduces the same bundle and the same release blockers.
+There has been no application development since the prior reviewed runtime. Commit `019e1fd…` changed documentation only relative to `7da750f…`; `src/` remains tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. The 2026-09-28 isolated offline rebuild reproduces the same bundle and release blockers and additionally proves that cancelling the wallet PIN prompt resolves mutation helpers with `undefined` while current issue/pay handlers continue into projections.
 
 ## Active issue register
 
@@ -15,6 +15,7 @@ There has been no application development since the prior reviewed runtime. Comm
 | P0 | Invoice creation uses the wrong destination key | `src/api/nexusAPI.js` sends `account`; LLL-TAO `Invoices::Create` calls `ExtractAddress(..., "to")`, whose accepted forms are `to`, `name_to`, `address_to` | Open | Production request test asserts `to` present/`account` absent; isolated target-core create/readback records address and txid |
 | P0 | Current invoice terms are discarded | `normalizeInvoice` reads top-level fields; source `InvoiceToJSON` nests terms/status under `json`; offline probe returns amount `0`, blank account/recipient, zero items, no token | Open | Strict fixture preserves canonical envelope plus nested account/recipient/token/status/items and exact supported amount; malformed variants reject |
 | P0 | Invoice owner is mis-modeled as issuer | Core `outstanding` standard is system-owned and `paid` is recipient-owned; current owner is lifecycle state | Open | Issuance tx/genesis is durably bound as issuer evidence; tests cover outstanding → paid/cancelled owner transitions and reject owner-as-issuer shortcuts |
+| P0 | PIN cancellation can drive false-success projections | Pinned NexusInterface sends `undefined` with no error when PIN is cancelled; offline probe shows issue/pay helpers resolve `undefined`, and current handlers then call taxi/ride updates | Open | Strict mutation response decoder; cancelled/undefined/error/malformed responses produce no projection or success UI; collected issue/pay cancellation tests assert zero downstream secure calls |
 | P0 | Ride/taxi authority fails open | Missing ride owner falls back to payload `passenger-genesis`; mutable taxi `driver` and settings-derived name control selection/mutation; first result is selected | Open | Canonical address/owner required; payload claims must match; active profile/network ownership verified; exact-address mutation only |
 | P0 | No transition concurrency or prestate protection | `updateRideRequestAsset` merges stale `currentData`, performs zero reads, then calls `secureApiCall`; core update has no public CAS | Open | Exact pre-read/digest/state check, durable one-pending lock, allowed transition table, post-readback; changed prestate rejects before PIN |
 | P0 | Invoice issue/pay are not durable | Driver/passenger view code stores no intent, remote identity, unknown outcome, or restart recovery; projection errors are reported as mutation failures | Open | Intent-first state machines survive every crash boundary; address/txid retained; exact readback resolves uncertainty; issue/pay each occur at most once |

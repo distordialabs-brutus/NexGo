@@ -2,7 +2,7 @@
 
 **Decentralized taxi hiring service built on the Nexus blockchain.**
 
-**Engineering status:** prototype, not payment-release-ready. See the [architecture](docs/ARCHITECTURE.md), [development plan](docs/DEVELOPMENT_PLAN.md), and [2026-09-08 review](docs/DEVELOPMENT_REVIEW_2026-09-08.md) for core invoice compatibility, settlement evidence and production packaging gates.
+**Engineering status:** prototype, not payment-release-ready. Current invoice issue/payment controls are unsafe and must remain disabled for real use until the staged gates exit. See the [architecture](docs/ARCHITECTURE.md), [current evaluation](docs/EVALUATION.md), [development plan](docs/DEVELOPMENT_PLAN.md), and [2026-09-28 executed review](docs/DEVELOPMENT_REVIEW_2026-09-28.md).
 
 NexGo is a Nexus Wallet module that lets drivers register their vehicles on-chain and broadcast their GPS positions in real-time. Passengers can discover nearby available taxis, see them on a live map, and search for destinations — all without a centralized server.
 
@@ -20,7 +20,7 @@ NexGo has two modes, accessible via tabs inside the module:
 - **Search destinations** — Type an address into the search bar (powered by OpenStreetMap/Nominatim) to set your destination and see routing on the map.
 - **Distance sorting** — Available taxis are listed by distance from your current GPS position, with estimated travel times.
 - **Hire on-chain** — Once pickup and destination are set, the passenger can create a decentralized `nexgo-ride` request asset for a selected taxi, including autonomous taxis.
-- **Settle accepted rides** — The passenger can review outstanding ride invoices and pay them directly through the Nexus Invoices API from the module.
+- **Prototype settlement UI** — The current module exposes outstanding-invoice and pay controls, but its adapter/recovery contracts are not safe for real use; see the release prohibition above.
 - **Reputation layer** — Drivers and autonomous providers can be rated on-chain through the `nexgo-rating` raw asset standard.
 - The taxi list refreshes every 10 seconds.
 
@@ -33,7 +33,7 @@ NexGo has two modes, accessible via tabs inside the module:
 - **Set your status** — Toggle between **Available** and **Occupied** to let passengers know whether you can accept rides.
 - **Update your asset** — Manually push your current status and location to the blockchain at any time via "Update Asset On-Chain".
 - **Stop broadcasting** — Click "Stop Broadcasting" to set your on-chain status to offline and stop position updates.
-- **Accept requests with invoices** — Review incoming `nexgo-ride` requests, create an invoice for a selected request, and cancel unpaid invoices if needed.
+- **Prototype invoice controls** — The Driver tab currently exposes issue/cancel controls, but current-core request/response decoding and durable recovery are unresolved release blockers. Do not use them with real profiles or funds.
 
 ### 🤖 Autonomous / self-driving providers
 
@@ -59,7 +59,7 @@ Assets are queried network-wide using `register/list/assets:asset` with a WHERE 
 
 Passenger hire requests are stored as raw assets using the `nexgo-ride` standard. Ratings are stored as raw assets using the `nexgo-rating` standard.
 
-Ride acceptance is represented by invoice issuance: because ride requests remain owned by the passenger's signature chain, the provider accepts by creating an invoice that references the ride, and the passenger updates the ride asset after payment.
+The prototype correlates a ride and invoice through description text and treats invoice issuance as an acceptance signal. This is not authoritative settlement or acceptance evidence: the repaired protocol must retain the invoice address and creation transaction/genesis, verify nested invoice terms, and recover issue/payment projections durably.
 
 ---
 
@@ -85,11 +85,11 @@ Ride acceptance is represented by invoice issuance: because ride requests remain
 
 ```bash
 # Clone the repository
-git clone https://github.com/AkstonCap/NexGo.git
+git clone https://github.com/distordialabs-brutus/NexGo.git
 cd NexGo
 
-# Install dependencies
-npm install
+# Reproduce the lockfile
+npm ci
 
 # Start the dev server (with hot reload)
 npm run dev
@@ -114,6 +114,8 @@ When developing, use `nxs_package.dev.json` to point the wallet at your local de
 6. Use **Update Location On-Chain** whenever you want to publish your latest tracked location.
 7. When you're done for the day, click **Stop Broadcasting**. Your on-chain status will be set to offline.
 
+Do not use the prototype invoice controls with real profiles or funds; they remain behind the release prohibition documented above.
+
 ### As a passenger
 
 1. Open NexGo in the wallet and stay on the **Passenger** tab.
@@ -121,16 +123,15 @@ When developing, use `nxs_package.dev.json` to point the wallet at your local de
 3. Available taxis appear on the map and in a sorted list below it.
 4. Use the search bar to enter a destination and see a route on the map.
 5. Click **Hire** / **Hire Auto** to create an on-chain ride request for the selected taxi.
-6. If the provider accepts, an outstanding invoice appears in the payment section.
-7. Pay the invoice from your configured passenger payment account.
-8. Click **Refresh** to manually update the taxi list, or wait for the 10-second auto-refresh.
+6. Treat any displayed invoice as prototype data only. Real payment is prohibited until the strict adapter, issuer-evidence, exact-money, and durable-recovery gates exit.
+7. Click **Refresh** to manually update the taxi list, or wait for the 10-second auto-refresh.
 
 ### As an autonomous provider
 
 1. Create a `nexgo-taxi-{vehicleId}` asset directly with `assets/create/asset` using the `JSON` format and the same field names listed above.
 2. Set `service-type=autonomous` and keep `status`, `latitude`, `longitude`, and `timestamp` updated via `assets/update/asset`.
 3. Monitor passenger-created `nexgo-ride-*` raw assets through `register/list/assets:raw`.
-4. Accept jobs by creating invoices that reference the ride asset, and settle payments with the Nexus Invoices API.
+4. Do not issue or settle real invoices from this prototype. Implement the pinned `to` request contract, nested response decoder, retained creation transaction/genesis evidence, exact supported money domain, and durable recovery protocol first.
 
 ---
 
@@ -147,10 +148,10 @@ When developing, use `nxs_package.dev.json` to point the wallet at your local de
 | `register/list/assets:asset` | Public | Query all taxi assets network-wide (passenger view) |
 | `register/list/assets:raw` | Public | Query rating and ride-request raw assets |
 | `profiles/status/master` | Session | Check if the user is logged in |
-| `invoices/create/invoice` | PIN | Settlement flow for accepted rides (provider side) |
-| `invoices/list/outstanding` | Session | Show unpaid ride invoices for the active user |
-| `invoices/pay/invoice` | PIN | Settlement flow for accepted rides (passenger side) |
-| `invoices/cancel/invoice` | PIN | Cancel unpaid ride invoices |
+| `invoices/create/invoice` | PIN | **Blocked prototype path:** pinned core requires destination via `to`; current adapter incorrectly sends `account` |
+| `invoices/list/outstanding` | Session | **Discovery only:** bounded subset; not authoritative issue/payment recovery |
+| `invoices/pay/invoice` | PIN | **Blocked prototype path:** requires strict nested-term, creation-evidence, exact-money, and recovery checks |
+| `invoices/cancel/invoice` | PIN | **Blocked prototype path:** requires strict response, authority, and readback handling |
 
 ---
 

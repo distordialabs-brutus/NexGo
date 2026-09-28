@@ -1,6 +1,6 @@
 # NexGo architecture and acceptance boundaries
 
-Reviewed 2026-09-25 against repository commit `7da750f1f674b9af839c650f6a47bc4a2af15729` (`master`, matching `origin/master` at review start). The commit changed documentation only relative to `78435a5d4f97deb27770051a8aacbbc3360b9355`; the application remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. See the current [evaluation](EVALUATION.md), [development plan](DEVELOPMENT_PLAN.md), and [2026-09-25 executed review](DEVELOPMENT_REVIEW_2026-09-25.md).
+Reviewed 2026-09-28 against repository commit `019e1fd79643e57d075b8efbd16778f0027d9ae2` (`master`, matching `origin/master` at review start). Commits since the last runtime change remain documentation-only; the application is still `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. See the current [evaluation](EVALUATION.md), [development plan](DEVELOPMENT_PLAN.md), and [2026-09-28 executed review](DEVELOPMENT_REVIEW_2026-09-28.md).
 
 **Status: prototype. Invoice creation/decoding, canonical authority, durable settlement, package closure, privacy, and engineering gates remain release blockers. No real payment, invoice, profile mutation, or production release is approved.**
 
@@ -8,7 +8,7 @@ Reviewed 2026-09-25 against repository commit `7da750f1f674b9af839c650f6a47bc4a2
 
 | Source | Exact identity | Architectural use |
 |---|---|---|
-| NexGo | `7da750f1f674b9af839c650f6a47bc4a2af15729` | Reviewed application and tracked documentation |
+| NexGo | `019e1fd79643e57d075b8efbd16778f0027d9ae2` | Reviewed application and tracked documentation |
 | NexGo runtime | `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f` | Actual module behavior |
 | LLL-TAO stable | `master` `1185145534a20ed4d2288e4513c505f271be536d` (5.1.6 release commit) | Supported initial invoice/register contract |
 | LLL-TAO development | `merging` `8af9c3387244b4d396c0e00ee81cea78bb9c0177` | Drift check; reviewed invoice create/JSON behavior matches stable |
@@ -48,6 +48,8 @@ Trusted Nexus core
 
 NexGo has no application backend. Passwords, PINs, API Basic credentials, and session IDs must never enter module state, storage, logs, or protocol records. Current writes use `secureApiCall`, so the wallet owns PIN/session handling. That is a useful boundary, but a PIN prompt is not application-level authorization: mutating endpoint identifiers need to be fixed internal values, every displayed parameter needs validation before the prompt, and writes need gates for active profile, intended network, synchronization, compatible core/wallet, and supported mode.
 
+The pinned wallet resolves a cancelled PIN prompt as a fulfilled `secureApiCall` with `undefined`, not as a rejected promise. Every NexGo mutation adapter must therefore require a strict success envelope and the expected remote identities. `undefined`, an error member, a malformed object, or a missing address/transaction ID is non-success. No chained projection, success dialog, deletion, or retry decision may run from such a result. Current issue and pay handlers violate this boundary: they continue to taxi/ride projection without checking the mutation response.
+
 ## Current records and canonical identity
 
 - Taxi assets are typed JSON registers. Current code stores mutable `driver`, vehicle data, exact coordinates, and timestamps.
@@ -70,7 +72,7 @@ The reviewed stable core establishes these semantics:
 5. `invoices/pay/invoice` reads the exact invoice, rejects paid/cancelled status and wrong-token source accounts, and emits one DEBIT plus CLAIM transaction.
 6. Core invoice source serializes amount values through floating-point JSON and reconstructs payment amount from `double * token figures`. NexGo must submit decimal strings, retain expected integer base units, constrain the supported amount domain, and verify the actual target-core transaction amount. JavaScript `parseFloat` is not acceptable money state.
 
-Current NexGo violates the first two adapter boundaries: `createRideInvoice` sends `account`, while `normalizeInvoice` reads terms at the top level and fabricates empty/zero defaults. The UI therefore cannot safely issue, identify, display, authorize, or reconcile current-core invoices.
+Current NexGo violates all three adapter boundaries: `createRideInvoice` sends `account`; `normalizeInvoice` reads terms at the top level and fabricates empty/zero defaults; and mutation helpers/UI treat a fulfilled `undefined` result as success. The UI therefore cannot safely issue, identify, display, authorize, reconcile, or project current-core invoices.
 
 ## Revision and transition strictness
 
@@ -89,13 +91,15 @@ Current public `assets/update/*` source exposes no compare-and-set parameter. Ra
 
 ```text
 issue_intent_persisted
+  -> authorization_cancelled                         # no submission, no projection
   -> issue_submitted
   -> invoice_identity_known | submission_unknown
-  -> invoice_readback_verified
+  -> invoice_and_creation_tx_verified
   -> taxi_projection_pending
   -> issue_complete
 
 payment_intent_persisted
+  -> authorization_cancelled                         # no submission, no projection
   -> payment_submitted
   -> payment_tx_known | submission_unknown
   -> invoice_and_transaction_verified
@@ -103,11 +107,13 @@ payment_intent_persisted
   -> complete
 ```
 
-Issuance intent freezes ride/taxi canonical addresses, passenger, provider, destination account, token, item decimals, integer base units, protocol version, and intended network. The returned invoice address and creation txid must be retained before taxi projection. A timeout, undefined response, or projection failure never authorizes invoice recreation.
+Issuance intent freezes ride/taxi canonical addresses, passenger, provider, destination account, token, item decimals, decimal wire strings, integer base units, protocol version, and intended network. Before submission, validate wallet readiness and exact prestates. A cancelled PIN prompt closes or retains the non-submitted intent without any projection. A successful response must contain the invoice address and creation txid; retain both before taxi projection. Read back the exact invoice and creation transaction, prove the expected provider genesis created/transferred that invoice address, and compare the nested terms. A timeout, undefined response, malformed envelope, or projection failure never authorizes invoice recreation.
 
-Payment intent freezes the retained issuance identity and exact invoice terms. Description text such as `ride=...` is only a discovery hint. Immediately before payment, reread the exact address and verify nested terms, lifecycle owner/status, creation identity, payer account token, and expected base units. After payment, verify the returned transaction and exact invoice transition. A projection failure is `ride_projection_pending`, not payment failure and never permission to repay.
+Payment intent freezes the retained issuance identity and exact invoice terms. Description text such as `ride=...` is only a discovery hint. Immediately before payment, reread the exact address and verify nested terms, lifecycle owner/status, creation transaction/genesis evidence, payer account token, and expected base units. A cancelled PIN prompt causes no projection. After a successful response, persist the payment txid and verify its exact DEBIT/CLAIM contracts plus the invoice ownership/status transition before projecting the ride. A projection failure is `ride_projection_pending`, not payment failure and never permission to repay.
 
 Recovery uses only registered/source-confirmed reads: exact `invoices/get/invoice`, invoice `history`/`transactions`, and ledger transaction lookup where required. It must not infer absence from `invoices/list/outstanding`, because a paid invoice leaves that subset.
+
+`authorization_cancelled` requires authoritative host evidence that authorization ended before submission. A bare fulfilled `undefined` is sufficient to prohibit projections, but is not a durable proof that no submission occurred: malformed/empty responses and lost results share that application boundary. If the supported wallet bridge cannot distinguish cancellation from an ambiguous result, retain `submission_unknown`, not a retryable cancellation. Test both explicit pre-submit cancellation and accepted-but-empty response; neither projects success, and only the former may establish non-submission.
 
 ## Browser privacy and external services
 
