@@ -1,5 +1,11 @@
 # NexGo architecture and acceptance boundaries
 
+## Governing vision and portfolio traceability
+
+Read [the repository vision](../vision.md) and [Distordia alignment/dependency map](DISTORDIA_ALIGNMENT.md) before assigning work. Authority is master Distordia strategy/customer evidence → portfolio roadmap/strategy decisions → repository vision → this architecture → tasks/code/tests/external evidence and human release.
+
+**Portfolio purpose:** O1 open mobility coordination; O2 accountable identity; O4 exact settlement; O5 validated reliance. Role-owned interoperable ride agreements and privacy-preserving settlement/reputation evidence, usable by human and autonomous providers without a privileged NexGo execution path. The alignment map supplies customer-evidence qualification, batch ownership, upstream prerequisites and human gates. Each material task must name those fields alongside its exact production paths and collected acceptance tests. This documentation alignment changes no runtime, test result or release status; dated evidence below remains evidence for its stated snapshot only.
+
 Reviewed 2026-10-02 against repository commit and supplied baseline `b775fd572b64b5b8ee246be87f899a72613d7d9e`. There are zero commits after the baseline. Commits since the last runtime change remain documentation-only; the application is still `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. See the current [evaluation](EVALUATION.md), [development plan](DEVELOPMENT_PLAN.md), [next coding contracts](NEXT_CODING_CONTRACTS.md), and [2026-10-02 executed review](DEVELOPMENT_REVIEW_2026-10-02.md).
 
 **Status: prototype. Invoice creation/decoding/cancellation, canonical authority, durable settlement, package closure, privacy, and engineering gates remain release blockers. No real payment, invoice issue/cancel, profile mutation, or production release is approved.**

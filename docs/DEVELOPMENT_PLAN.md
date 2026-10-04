@@ -1,5 +1,11 @@
 # NexGo development plan
 
+## Governing vision and portfolio traceability
+
+Read [the repository vision](../vision.md) and [Distordia alignment/dependency map](DISTORDIA_ALIGNMENT.md) before assigning work. Authority is master Distordia strategy/customer evidence → portfolio roadmap/strategy decisions → repository vision → this development plan → tasks/code/tests/external evidence and human release.
+
+**Portfolio purpose:** O1 open mobility coordination; O2 accountable identity; O4 exact settlement; O5 validated reliance. Role-owned interoperable ride agreements and privacy-preserving settlement/reputation evidence, usable by human and autonomous providers without a privileged NexGo execution path. The alignment map supplies customer-evidence qualification, batch ownership, upstream prerequisites and human gates. Each material task must name those fields alongside its exact production paths and collected acceptance tests. This documentation alignment changes no runtime, test result or release status; dated evidence below remains evidence for its stated snapshot only.
+
 Status re-reviewed 2026-10-02 against supplied baseline and HEAD `b775fd572b64b5b8ee246be87f899a72613d7d9e`; runtime remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. There are zero commits after the baseline. Historical 2026-09-30 evidence records a clean offline install/build at the same exact head; a fresh unattended clean-build attempt was approval-blocked by incomplete package threat-intelligence checks and was not rerouted. Fresh safe probes reproduce the blockers and add four source-backed constraints: cancel needs exact VOID/readback evidence; `-autotx` may omit txid; wallet session/readiness state must gate writes; and pinned module storage is not an acknowledged durable journal. Architecture authority: [ARCHITECTURE.md](ARCHITECTURE.md). Implementation contract: [NEXT_CODING_CONTRACTS.md](NEXT_CODING_CONTRACTS.md). Evidence summary: [DEVELOPMENT_REVIEW_2026-10-02.md](DEVELOPMENT_REVIEW_2026-10-02.md).
 
 **No real invoice issue, payment, cancellation, profile write, production installation, or release until Batch 0 and Batches 1A–1D exit. Next implementation slice: Batch 0 followed by Batch 1A.**
