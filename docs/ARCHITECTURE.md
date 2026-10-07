@@ -6,7 +6,7 @@ Read [the repository vision](../vision.md) and [Distordia alignment/dependency m
 
 **Portfolio purpose:** O1 open mobility coordination; O2 accountable identity; O4 exact settlement; O5 validated reliance. Role-owned interoperable ride agreements and privacy-preserving settlement/reputation evidence, usable by human and autonomous providers without a privileged NexGo execution path. The alignment map supplies customer-evidence qualification, batch ownership, upstream prerequisites and human gates. Each material task must name those fields alongside its exact production paths and collected acceptance tests. This documentation alignment changes no runtime, test result or release status; dated evidence below remains evidence for its stated snapshot only.
 
-Reviewed 2026-10-02 against repository commit and supplied baseline `b775fd572b64b5b8ee246be87f899a72613d7d9e`. There are zero commits after the baseline. Commits since the last runtime change remain documentation-only; the application is still `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. See the current [evaluation](EVALUATION.md), [development plan](DEVELOPMENT_PLAN.md), [next coding contracts](NEXT_CODING_CONTRACTS.md), and [2026-10-02 executed review](DEVELOPMENT_REVIEW_2026-10-02.md).
+Current reviewed published source is detached remote tip `da31193fdd1b5eb22a80fc5c717e1f688538e449`; the application remains `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f`. The fresh local-only commit `76c1473b1cc76e996a98c11af1cf18eb60641e1d` is a sibling, not a descendant: both lines fork at `b775fd572b64b5b8ee246be87f899a72613d7d9e`. Its diagnostic evidence is useful review context but is not published-source identity and does not supersede the two remote documentation commits. See the current [evaluation](EVALUATION.md), [development plan](DEVELOPMENT_PLAN.md), [next coding contracts](NEXT_CODING_CONTRACTS.md), and historical [2026-10-02 executed review](DEVELOPMENT_REVIEW_2026-10-02.md).
 
 **Status: prototype. Invoice creation/decoding/cancellation, canonical authority, durable settlement, package closure, privacy, and engineering gates remain release blockers. No real payment, invoice issue/cancel, profile mutation, or production release is approved.**
 
@@ -14,12 +14,13 @@ Reviewed 2026-10-02 against repository commit and supplied baseline `b775fd572b6
 
 | Source | Exact identity | Architectural use |
 |---|---|---|
-| NexGo | `b775fd572b64b5b8ee246be87f899a72613d7d9e` | Reviewed application and tracked documentation |
+| NexGo published source | `da31193fdd1b5eb22a80fc5c717e1f688538e449` | Detached remote-tip documentation candidate reviewed here |
+| NexGo divergent local source | `76c1473b1cc76e996a98c11af1cf18eb60641e1d`, merge base `b775fd572b64b5b8ee246be87f899a72613d7d9e` | Local-only diagnostic/documentation sibling; not contained in remote tip |
 | NexGo runtime | `src/` tree `b0a45a0c3c4c7f38ac72f6dab134d2403da6f14f` | Actual module behavior |
 | LLL-TAO stable | `master` `1185145534a20ed4d2288e4513c505f271be536d` (5.1.6 release commit) | Supported initial invoice/register contract |
 | LLL-TAO development | `merging` `8af9c3387244b4d396c0e00ee81cea78bb9c0177` | Drift check; reviewed invoice create/JSON behavior matches stable |
 | NexusInterface | `master` `1e923d46a9cde1cf22b8608257c92da184aece16` | Module bridge and wallet trust boundary |
-| Design context | untracked `vision.md`, SHA-256 `5829f1f5e8eb5a6a0fb748c4f031a29da2296b24a527c309fd741ddf411c6bfb` | Intended open mobility protocol; not implementation evidence and not part of the reviewed commit |
+| Repository vision | explicitly reviewed tracked `vision.md` in this documentation candidate | Governing open-mobility intent below portfolio decisions; design authority, not implementation evidence. The October 2 untracked hash/exclusion belongs only to its historical review. |
 
 LLL-TAO source, not the vendored API prose, is authoritative when they disagree. The 2026-10-02 review re-fetched the pinned stable snapshots and recorded SHA-256 for invoice create `ffec21ac…`, JSON `91c5e740…`, pay `46ce222b…`, cancel `1260a5cd…`, address extraction `274ed9b9…`, generic transaction build `72a1cd63…`, session create `fca095d3…`, session status `dc093742…`, and NexusInterface API/session/bridge sources. These snapshots establish source semantics only; no live node or wallet acceptance was run.
 
@@ -81,7 +82,7 @@ The reviewed stable core establishes these semantics:
 6. `invoices/cancel/invoice` reads nested recipient/status, rejects paid or already-cancelled invoices, locates the original conditional transfer, and builds a VOID. Direct-mode `BuildResponse` returns the invoice address and cancel txid; finality still requires exact cancelled-state and void/history readback.
 7. Core invoice source serializes amount values through floating-point JSON and reconstructs payment amount from `double * token figures`. NexGo must submit decimal strings, retain expected integer base units, constrain the supported amount domain, and verify the actual target-core transaction amount. JavaScript `parseFloat` is not acceptable money state.
 
-Current NexGo violates all adapter boundaries: `createRideInvoice` sends `account`; `normalizeInvoice` reads terms at the top level and fabricates empty/zero defaults; mutation helpers/UI treat a fulfilled `undefined` result as success; cancel has no retained intent/result/evidence; and settlement ignores wallet readiness. The UI therefore cannot safely issue, identify, display, authorize, cancel, reconcile, or project current-core invoices.
+Current NexGo violates all adapter boundaries: `createRideInvoice` sends `account`; `normalizeInvoice` reads terms at the top level and fabricates empty/zero defaults; mutation helpers/UI treat a fulfilled `undefined` result as success; cancel has no retained intent/result/evidence; and settlement ignores wallet readiness. The same defect is broader than settlement: taxi create/update, ride-request create/update, and rating create/update ignore the command-specific result and their callers advance local state or success UI. `createAsset` can even follow an ambiguous create with a name lookup and misattribute a pre-existing asset as the result of the current command. Every secure mutation, including fee-spending asset/name creation, needs a closed outcome and exact readback; the UI therefore cannot safely issue, identify, display, authorize, cancel, reconcile, or project current-core mutations.
 
 ## Revision and transition strictness
 

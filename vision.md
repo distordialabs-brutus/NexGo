@@ -4,9 +4,11 @@
 
 The master Distordia project also owns `PORTFOLIO_DEVELOPMENT_PLAN.md` and its strategy-decision register. The full order is **master strategy/customer evidence → portfolio roadmap/decisions → this vision → architecture/development plan → tasks/code/tests/release evidence**. Read the [portable repository alignment](docs/DISTORDIA_ALIGNMENT.md) for objective, customer-evidence, ownership and dependency mapping. Master-source paths below are local workspace references, not promised GitHub links. This section adds portfolio sequencing; it does not certify the envisioned behavior or amend unresolved master strategy assumptions.
 
+The canonical business DOCX governs the thesis and the Customer Problem Atlas classifies problem evidence; the Atlas does not select a mobility direction or prove willingness to pay. The maintained portfolio plan is the required layer between those originals and this repository: it records sequencing and unresolved decisions without silently amending the DOCX. Mobility remains an unvalidated non-Atlas hypothesis. No marine Class A evidence transfers to rider, provider, fleet, wallet-settlement, privacy, insurance, or regulatory demand.
+
 ## Accountability venture context — not canonical authority
 
-[Staked Accountability Rails](../../projects/Distordia/staked-accountability-rails.md) and [Infrastructure Buildout](../../projects/Distordia/infrastructure-buildout.md) are venture hypotheses and dependency-design context. They do not amend canonical strategy or prove enforceable collateral/slashing, non-custody, regulatory status, reputation, or adoption. Interpret unresolved claims through the master portfolio decision register (SD-002–SD-008); feasibility, legal assessment and human decisions remain required.
+Local-only, non-link venture sources `/home/brutus/projects/Distordia/staked-accountability-rails.md` and `/home/brutus/projects/Distordia/infrastructure-buildout.md` are venture hypotheses and dependency-design context. They do not amend canonical strategy or prove enforceable collateral/slashing, non-custody, regulatory status, reputation, or adoption. Interpret unresolved claims through the master portfolio decision register (SD-002–SD-008); feasibility, legal assessment and human decisions remain required.
 
 NexGo is an open mobility coordination layer for people and autonomous agents. It should let riders discover and contract with human drivers, owner-operated vehicles, robotaxis, and fleet agents through the same public standards—without making one application the gatekeeper.
 
@@ -18,8 +20,8 @@ The long-term product is not a map screen or a taxi marketplace. Interfaces will
 
 NexGo inherits its direction from the canonical Distordia sources:
 
-- [Business Thesis, Vision, and Strategy](../../projects/Distordia/Distordia_Labs_Business_Thesis_and_Strategy_v2.docx)
-- [Customer Problem Atlas](../../projects/Distordia/Distordia_Customer_Problem_Atlas_v2.docx)
+- **Local-only, non-link canonical source:** `/home/brutus/projects/Distordia/Distordia_Labs_Business_Thesis_and_Strategy_v2.docx`
+- **Local-only, non-link customer-evidence source:** `/home/brutus/projects/Distordia/Distordia_Customer_Problem_Atlas_v2.docx`
 
 The canonical sources and recorded portfolio decisions establish the operating posture; the venture documents above remain hypothesis context:
 
@@ -59,7 +61,7 @@ No participant should need the NexGo UI. A wallet module, fleet system, accessib
 
 When sources conflict, apply this order:
 
-1. **Canonical master strategy and customer evidence** — [Business Thesis and Strategy v2](../../projects/Distordia/Distordia_Labs_Business_Thesis_and_Strategy_v2.docx) and [Customer Problem Atlas v2](../../projects/Distordia/Distordia_Customer_Problem_Atlas_v2.docx). The master `PORTFOLIO_DEVELOPMENT_PLAN.md` records portfolio sequencing and explicit strategy decisions before this repository vision.
+1. **Canonical master strategy and customer evidence** — local-only, non-link sources `/home/brutus/projects/Distordia/Distordia_Labs_Business_Thesis_and_Strategy_v2.docx` and `/home/brutus/projects/Distordia/Distordia_Customer_Problem_Atlas_v2.docx`. The master local-only, non-link `/home/brutus/projects/Distordia/PORTFOLIO_DEVELOPMENT_PLAN.md` records portfolio sequencing and explicit strategy decisions before this repository vision.
 2. **This vision** defines the durable mobility outcome and product boundaries.
 3. **[Architecture](docs/ARCHITECTURE.md) and [development plan](docs/DEVELOPMENT_PLAN.md)** define current technical constraints, sequencing, and acceptance gates.
 4. **Code, tests, executed reviews, and releases** demonstrate what is actually implemented and verified.
